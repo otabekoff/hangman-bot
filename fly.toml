@@ -1,24 +1,23 @@
-# fly.toml app configuration file generated for hangman-bot
+# fly.toml app configuration file generated for hangman-telegram-bot on 2025-10-05T13:37:45+05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "hangman-bot"
-primary_region = "iad"
+app = 'hangman-telegram-bot'
+primary_region = 'fra'
 
 [build]
-  builder = "paketobuildpacks/builder:base"
+  builder = 'paketobuildpacks/builder:base'
 
 [env]
-  PORT = "8080"
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
 
 [[vm]]
-  cpu_kind = "shared"
-  cpus = 1
-  memory_mb = 256
+  size = 'shared-cpu-1x'

@@ -5,6 +5,7 @@ import logging
 import random
 import os
 import csv
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -591,12 +592,38 @@ async def handle_other_messages(message: types.Message, state: FSMContext):
     except:
         pass
 
+async def health_check(request):
+    """Health check endpoint to keep the machine active"""
+    return web.Response(text="Bot is running!", status=200)
+
+async def create_app():
+    """Create aiohttp web application for health checks"""
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/', health_check)
+    return app
+
 async def main():
     """Main function to start the bot"""
     logging.info("Starting bot...")
+    
+    # Create and start web server for health checks
+    app = await create_app()
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.getenv('PORT', 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    
     try:
+        # Start web server
+        await site.start()
+        logging.info(f"Health check server started on port {port}")
+        
+        # Start bot polling
         await dp.start_polling(bot)
     finally:
+        await runner.cleanup()
         await bot.session.close()
 
 if __name__ == '__main__':

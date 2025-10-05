@@ -12,5 +12,19 @@ primary_region = 'fra'
 [env]
   PORT = "8080"
 
+# HTTP service configuration for health endpoint and auto-stop prevention
+[http_service]
+  processes = ["app"]           # Apply to the "app" process
+  internal_port = 8080
+  auto_stop_machines = "off"    # CRITICAL: Never stop machines when idle
+  auto_start_machines = true    # Auto-start if somehow stopped
+  min_machines_running = 1      # Always keep at least 1 machine running
+
+# Keep exactly 1 machine running with specific size
 [[vm]]
   size = 'shared-cpu-1x'
+
+# Process configuration
+[processes]
+  app = "python hangman-bot.py"
+

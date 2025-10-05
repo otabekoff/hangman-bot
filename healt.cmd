@@ -1,0 +1,1 @@
+curl.exe -k https://hangman-telegram-bot.fly.dev/health

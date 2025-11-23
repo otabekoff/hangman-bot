@@ -1,4 +1,4 @@
-name: Fast Auto Deploy to DigitalOcean
+name: Deploy Hangman Bot to DigitalOcean
 
 on:
   push:
@@ -12,40 +12,60 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # - name: Install rsync and sshpass
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y sshpass rsync
+      - name: Setup SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Sync changed files to server (rsync)
+      - name: Sync files to DigitalOcean droplet
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PASS: ${{ secrets.SSH_PASS }}
           PROJECT_DIR: ${{ secrets.PROJECT_DIR }}
         run: |
-          echo "Uploading only changed files..."
-          sshpass -p "$SSH_PASS" rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no" \
+          echo "Syncing project files to server..."
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             ./ "$SSH_USER@$SSH_HOST:$PROJECT_DIR"
 
-      - name: Zero-downtime docker deploy
+      - name: Deploy hangman bot container
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PASS: ${{ secrets.SSH_PASS }}
           PROJECT_DIR: ${{ secrets.PROJECT_DIR }}
         run: |
-          echo "Deploying new Docker version..."
-          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << EOF
+          echo "Building and deploying hangman bot..."
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << 'EOF'
             cd $PROJECT_DIR
 
-            # Build only modified layers
-            docker compose build --pull
+            # Stop and remove old container if exists
+            docker stop hangman-bot 2>/dev/null || true
+            docker rm hangman-bot 2>/dev/null || true
 
-            # Start new version without stopping current one first
-            docker compose up -d --no-deps --build
+            # Build new image
+            docker build -t hangman-bot:latest .
 
-            # Clean unused images
+            # Run new container
+            docker run -d \
+              --name hangman-bot \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              --env-file .env \
+              hangman-bot:latest
+
+            # Clean up unused images
             docker image prune -f
+
+            # Show container status
+            echo "Deployment complete!"
+            docker ps | grep hangman-bot
           EOF

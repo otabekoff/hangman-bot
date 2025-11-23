@@ -44,7 +44,7 @@ jobs:
           PROJECT_DIR: ${{ secrets.PROJECT_DIR }}
         run: |
           echo "Building and deploying hangman bot..."
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << 'EOF'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << EOF
             cd $PROJECT_DIR
 
             # Stop and remove old container if exists

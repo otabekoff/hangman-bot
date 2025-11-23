@@ -48,12 +48,19 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << EOF
             cd $PROJECT_DIR
 
+            # Enable Docker BuildKit for better caching
+            export DOCKER_BUILDKIT=1
+
+            # Build new image using previous image as cache
+            # This will reuse layers that haven't changed
+            docker build \
+              --cache-from hangman-bot:latest \
+              --build-arg BUILDKIT_INLINE_CACHE=1 \
+              -t hangman-bot:latest .
+
             # Stop and remove old container if exists
             docker stop hangman-bot 2>/dev/null || true
             docker rm hangman-bot 2>/dev/null || true
-
-            # Build new image with caching
-            docker build -t hangman-bot:latest .
 
             # Run new container with BOT_TOKEN from GitHub secrets
             docker run -d \

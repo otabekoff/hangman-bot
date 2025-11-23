@@ -42,6 +42,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           PROJECT_DIR: ${{ secrets.PROJECT_DIR }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           echo "Building and deploying hangman bot..."
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" << EOF
@@ -51,21 +52,21 @@ jobs:
             docker stop hangman-bot 2>/dev/null || true
             docker rm hangman-bot 2>/dev/null || true
 
-            # Build new image
+            # Build new image with caching
             docker build -t hangman-bot:latest .
 
-            # Run new container
+            # Run new container with BOT_TOKEN from GitHub secrets
             docker run -d \
               --name hangman-bot \
               --restart unless-stopped \
               -p 8080:8080 \
-              --env-file .env \
+              -e BOT_TOKEN="$BOT_TOKEN" \
               hangman-bot:latest
 
-            # Clean up unused images
+            # Clean up dangling images only (keep tagged images for cache)
             docker image prune -f
 
             # Show container status
             echo "Deployment complete!"
-            docker ps | grep hangman-bot
+            docker ps --filter "name=hangman-bot"
           EOF
